@@ -2,7 +2,7 @@ databases:
   - name: group-choice-db
     databaseName: group_choice
     user: group_choice
-    plan: free
+    plan: hobby
     region:
 
 services:
@@ -11,7 +11,7 @@ services:
     name: group-choice-api
     runtime: python
     region:
-    plan: free
+    plan: hobby
     buildCommand: cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: cd backend && gunicorn group_choice.wsgi:application
     envVars:
@@ -49,7 +49,7 @@ services:
     name: group-choice-frontend
     runtime: static
     region: 
-    plan: free
+    plan: hobby
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
     envVars:
