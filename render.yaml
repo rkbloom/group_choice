@@ -43,7 +43,7 @@ services:
         sync: false
 
   # React Frontend
-  - type: static
+  - type: web
     name: group-choice-frontend
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
