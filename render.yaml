@@ -10,7 +10,7 @@ services:
   - type: web
     name: group-choice-api
     runtime: python
-    region: oregon
+    region:
     plan: free
     buildCommand: cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: cd backend && gunicorn group_choice.wsgi:application
@@ -48,7 +48,7 @@ services:
   - type: web
     name: group-choice-frontend
     runtime: static
-    region: oregon
+    region: 
     plan: free
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
