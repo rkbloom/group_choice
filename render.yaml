@@ -45,6 +45,7 @@ services:
   # React Frontend
   - type: web
     name: group-choice-frontend
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
     envVars:
