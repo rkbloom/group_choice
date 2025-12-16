@@ -3,7 +3,7 @@ databases:
     databaseName: group_choice
     user: group_choice
     plan: free
-    region: oregon
+    region:
 
 services:
   # Django Backend API
