@@ -102,11 +102,27 @@ const SurveyTakePage = () => {
       setSubmitted(true);
     } catch (error) {
       console.error('Failed to submit:', error);
-      setError(
-        error.response?.data?.detail ||
-          error.response?.data?.non_field_errors?.[0] ||
-          'Failed to submit response.'
-      );
+      // Extract error message from various DRF response formats
+      const data = error.response?.data;
+      let errorMessage = 'Failed to submit response.';
+
+      if (data) {
+        if (typeof data === 'string') {
+          errorMessage = data;
+        } else if (Array.isArray(data)) {
+          errorMessage = data[0];
+        } else if (data.detail) {
+          errorMessage = data.detail;
+        } else if (data.non_field_errors) {
+          errorMessage = Array.isArray(data.non_field_errors)
+            ? data.non_field_errors[0]
+            : data.non_field_errors;
+        } else if (data.message) {
+          errorMessage = data.message;
+        }
+      }
+
+      setError(errorMessage);
     }
     setSubmitting(false);
   };

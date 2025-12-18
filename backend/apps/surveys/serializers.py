@@ -240,7 +240,10 @@ class SurveyResponseCreateSerializer(serializers.Serializer):
         if not survey.is_active:
             raise serializers.ValidationError("This survey is no longer active.")
         if survey.is_expired:
-            raise serializers.ValidationError("This survey has expired.")
+            deadline_str = survey.deadline.strftime('%B %d, %Y at %I:%M %p') if survey.deadline else ''
+            raise serializers.ValidationError(
+                f"This survey has expired. The deadline was {deadline_str}."
+            )
 
         # Validate based on survey type
         if survey.survey_type == Survey.SurveyType.RANKED_CHOICE:
