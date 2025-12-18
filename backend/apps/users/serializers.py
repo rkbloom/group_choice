@@ -63,9 +63,24 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        """Create a new user."""
+        """Create a new user and link existing memberships/invitations."""
         validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
+
+        # Link existing group memberships to the new user
+        from apps.groups.models import GroupMember
+        GroupMember.objects.filter(
+            email__iexact=user.email,
+            user__isnull=True
+        ).update(user=user)
+
+        # Link existing anonymous invitations to the new user
+        from apps.surveys.models import AnonymousInvitation
+        AnonymousInvitation.objects.filter(
+            email__iexact=user.email,
+            user__isnull=True
+        ).update(user=user)
+
         return user
 
 
