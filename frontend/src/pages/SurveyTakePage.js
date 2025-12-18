@@ -342,6 +342,27 @@ const RankedChoiceForm = ({ choices, sensors, onDragEnd }) => {
   );
 };
 
+// Choice Text Component (with optional link)
+const ChoiceText = ({ text, url, className = '' }) => {
+  if (url) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className={`text-moss-600 hover:text-moss-700 underline ${className}`}
+      >
+        {text}
+        <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </a>
+    );
+  }
+  return <span className={className}>{text}</span>;
+};
+
 // Sortable Item Component
 const SortableItem = ({ choice, rank }) => {
   const {
@@ -371,7 +392,9 @@ const SortableItem = ({ choice, rank }) => {
       <div className="w-8 h-8 bg-sage-100 rounded-full flex items-center justify-center text-sage-700 font-bold">
         {rank}
       </div>
-      <span className="text-stone-800 flex-1">{choice.text}</span>
+      <div className="flex-1">
+        <ChoiceText text={choice.text} url={choice.url} className="text-stone-800" />
+      </div>
       <svg
         className="w-5 h-5 text-stone-400"
         fill="none"
@@ -414,7 +437,9 @@ const FiveStonesForm = ({ choices, allocations, remainingStones, onAllocate }) =
       <div className="space-y-6">
         {choices.map((choice) => (
           <div key={choice.id} className="p-4 bg-stone-50 rounded-xl">
-            <div className="font-medium text-stone-800 mb-3">{choice.text}</div>
+            <div className="font-medium text-stone-800 mb-3">
+              <ChoiceText text={choice.text} url={choice.url} />
+            </div>
             <div className="flex items-center justify-between">
               <div className="flex gap-1">
                 {[...Array(5)].map((_, i) => (

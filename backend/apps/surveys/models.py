@@ -189,6 +189,11 @@ class SurveyChoice(models.Model):
         related_name='choices'
     )
     text = models.CharField(max_length=500)
+    url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text='Optional URL to make this choice a clickable link'
+    )
     order = models.PositiveIntegerField(default=0)
 
     class Meta:

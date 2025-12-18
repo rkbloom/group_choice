@@ -19,7 +19,7 @@ const SurveyCreatePage = () => {
     deadline: '',
   });
 
-  const [choices, setChoices] = useState(['', '']);
+  const [choices, setChoices] = useState([{ text: '', url: '' }, { text: '', url: '' }]);
   const [groups, setGroups] = useState([]);
   const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ const SurveyCreatePage = () => {
           deadline: survey.deadline ? survey.deadline.slice(0, 16) : '',
         });
 
-        setChoices(survey.choices.map((c) => c.text));
+        setChoices(survey.choices.map((c) => ({ text: c.text, url: c.url || '' })));
       }
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -74,22 +74,22 @@ const SurveyCreatePage = () => {
     // Reset choices when type changes
     if (name === 'survey_type') {
       if (value === 'five_stones') {
-        setChoices(['', '', '']);
+        setChoices([{ text: '', url: '' }, { text: '', url: '' }, { text: '', url: '' }]);
       } else {
-        setChoices(['', '']);
+        setChoices([{ text: '', url: '' }, { text: '', url: '' }]);
       }
     }
   };
 
-  const handleChoiceChange = (index, value) => {
+  const handleChoiceChange = (index, field, value) => {
     const newChoices = [...choices];
-    newChoices[index] = value;
+    newChoices[index] = { ...newChoices[index], [field]: value };
     setChoices(newChoices);
   };
 
   const addChoice = () => {
     if (formData.survey_type === 'ranked_choice' && choices.length < 10) {
-      setChoices([...choices, '']);
+      setChoices([...choices, { text: '', url: '' }]);
     }
   };
 
@@ -109,7 +109,7 @@ const SurveyCreatePage = () => {
       newErrors.question = 'Question is required';
     }
 
-    const filledChoices = choices.filter((c) => c.trim());
+    const filledChoices = choices.filter((c) => c.text.trim());
     if (formData.survey_type === 'five_stones') {
       if (filledChoices.length !== 3) {
         newErrors.choices = '5 Stones surveys require exactly 3 choices';
@@ -134,9 +134,9 @@ const SurveyCreatePage = () => {
     try {
       const payload = {
         ...formData,
-        choices: isEditing
-          ? choices.filter((c) => c.trim()).map((text) => ({ text }))
-          : choices.filter((c) => c.trim()),
+        choices: choices
+          .filter((c) => c.text.trim())
+          .map((c) => ({ text: c.text, url: c.url || '' })),
         distribution_group: formData.distribution_group || null,
         theme: formData.theme || null,
         deadline: formData.deadline || null,
@@ -272,33 +272,47 @@ const SurveyCreatePage = () => {
             Choices{' '}
             {formData.survey_type === 'five_stones' ? '(exactly 3)' : '(2-10)'}
           </label>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {choices.map((choice, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <span className="text-stone-400 font-medium w-6">{index + 1}.</span>
-                <input
-                  type="text"
-                  value={choice}
-                  onChange={(e) => handleChoiceChange(index, e.target.value)}
-                  className="input-field flex-1"
-                  placeholder={`Choice ${index + 1}`}
-                />
-                {formData.survey_type === 'ranked_choice' && choices.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => removeChoice(index)}
-                    className="p-2 text-stone-400 hover:text-red-500 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                )}
+              <div key={index} className="p-4 bg-stone-50 rounded-lg border border-stone-200">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-stone-400 font-medium w-6">{index + 1}.</span>
+                  <input
+                    type="text"
+                    value={choice.text}
+                    onChange={(e) => handleChoiceChange(index, 'text', e.target.value)}
+                    className="input-field flex-1"
+                    placeholder={`Choice ${index + 1}`}
+                  />
+                  {formData.survey_type === 'ranked_choice' && choices.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removeChoice(index)}
+                      className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 ml-9">
+                  <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  <input
+                    type="url"
+                    value={choice.url}
+                    onChange={(e) => handleChoiceChange(index, 'url', e.target.value)}
+                    className="input-field flex-1 text-sm"
+                    placeholder="Link URL (optional)"
+                  />
+                </div>
               </div>
             ))}
           </div>

@@ -17,7 +17,7 @@ class SurveyChoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SurveyChoice
-        fields = ['id', 'text', 'order']
+        fields = ['id', 'text', 'url', 'order']
         read_only_fields = ['id']
 
 
@@ -53,7 +53,6 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating surveys."""
 
     choices = serializers.ListField(
-        child=serializers.CharField(max_length=500),
         min_length=2,
         max_length=10,
         write_only=True
@@ -86,7 +85,22 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
                     "Ranked Choice surveys can have at most 10 choices."
                 )
 
-        return value
+        # Normalize choices to dict format
+        normalized = []
+        for choice in value:
+            if isinstance(choice, str):
+                normalized.append({'text': choice, 'url': ''})
+            elif isinstance(choice, dict):
+                if 'text' not in choice:
+                    raise serializers.ValidationError("Each choice must have a 'text' field.")
+                normalized.append({
+                    'text': choice['text'],
+                    'url': choice.get('url', '') or ''
+                })
+            else:
+                raise serializers.ValidationError("Each choice must be a string or object with 'text' field.")
+
+        return normalized
 
     def validate_distribution_group(self, value):
         """Validate that the user owns the distribution group."""
@@ -104,10 +118,11 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
         survey = Survey.objects.create(**validated_data)
 
         # Create choices
-        for i, choice_text in enumerate(choices_data):
+        for i, choice_data in enumerate(choices_data):
             SurveyChoice.objects.create(
                 survey=survey,
-                text=choice_text,
+                text=choice_data['text'],
+                url=choice_data.get('url', ''),
                 order=i + 1
             )
 
@@ -181,6 +196,7 @@ class SurveyUpdateSerializer(serializers.ModelSerializer):
                 SurveyChoice.objects.create(
                     survey=instance,
                     text=choice_data.get('text', ''),
+                    url=choice_data.get('url', ''),
                     order=i + 1
                 )
 
