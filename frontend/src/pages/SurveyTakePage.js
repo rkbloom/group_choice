@@ -19,6 +19,136 @@ import { CSS } from '@dnd-kit/utilities';
 import { surveysAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+// Helper to map error codes to display types
+const getErrorType = (errorCode) => {
+  switch (errorCode) {
+    case 'SURVEY_EXPIRED':
+      return 'expired';
+    case 'SURVEY_INACTIVE':
+      return 'inactive';
+    case 'ALREADY_RESPONDED':
+      return 'duplicate';
+    case 'INVALID_TOKEN':
+      return 'invalid';
+    case 'AUTH_REQUIRED':
+      return 'auth';
+    default:
+      return 'error';
+  }
+};
+
+// Error Alert Component with icons based on error type
+const ErrorAlert = ({ error }) => {
+  // Handle both string errors and object errors
+  const errorType = typeof error === 'object' ? error.type : 'error';
+  const errorMessage = typeof error === 'object' ? error.message : error;
+
+  const getIcon = () => {
+    switch (errorType) {
+      case 'expired':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'inactive':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+        );
+      case 'duplicate':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'invalid':
+      case 'auth':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        );
+      case 'network':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+          </svg>
+        );
+      case 'server':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        );
+    }
+  };
+
+  const getTitle = () => {
+    switch (errorType) {
+      case 'expired':
+        return 'Survey Deadline Passed';
+      case 'inactive':
+        return 'Survey Closed';
+      case 'duplicate':
+        return 'Already Submitted';
+      case 'invalid':
+        return 'Invalid Link';
+      case 'auth':
+        return 'Sign In Required';
+      case 'network':
+        return 'Connection Error';
+      case 'server':
+        return 'Server Error';
+      default:
+        return 'Submission Failed';
+    }
+  };
+
+  const getBgColor = () => {
+    switch (errorType) {
+      case 'duplicate':
+        return 'bg-amber-50 border-amber-200';
+      case 'network':
+      case 'server':
+        return 'bg-orange-50 border-orange-200';
+      default:
+        return 'bg-red-50 border-red-200';
+    }
+  };
+
+  const getTextColor = () => {
+    switch (errorType) {
+      case 'duplicate':
+        return 'text-amber-700';
+      case 'network':
+      case 'server':
+        return 'text-orange-700';
+      default:
+        return 'text-red-700';
+    }
+  };
+
+  return (
+    <div className={`mb-6 p-4 border rounded-xl ${getBgColor()}`}>
+      <div className="flex items-start gap-3">
+        <div className={`flex-shrink-0 ${getTextColor()}`}>{getIcon()}</div>
+        <div className="flex-1">
+          <h3 className={`font-semibold ${getTextColor()}`}>{getTitle()}</h3>
+          <p className={`mt-1 text-sm ${getTextColor()} opacity-90`}>{errorMessage}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SurveyTakePage = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -104,25 +234,54 @@ const SurveyTakePage = () => {
       console.error('Failed to submit:', error);
       // Extract error message from various DRF response formats
       const data = error.response?.data;
-      let errorMessage = 'Failed to submit response.';
+      const status = error.response?.status;
+      let errorInfo = {
+        type: 'error',
+        message: 'Something went wrong while submitting your response. Please try again.',
+      };
 
       if (data) {
-        if (typeof data === 'string') {
-          errorMessage = data;
+        // Handle structured error responses with error_code
+        if (data.non_field_errors && typeof data.non_field_errors[0] === 'object') {
+          const errData = data.non_field_errors[0];
+          errorInfo = {
+            type: getErrorType(errData.error_code),
+            message: errData.message,
+          };
+        } else if (typeof data === 'string') {
+          errorInfo.message = data;
         } else if (Array.isArray(data)) {
-          errorMessage = data[0];
+          errorInfo.message = data[0];
         } else if (data.detail) {
-          errorMessage = data.detail;
+          errorInfo.message = data.detail;
         } else if (data.non_field_errors) {
-          errorMessage = Array.isArray(data.non_field_errors)
+          errorInfo.message = Array.isArray(data.non_field_errors)
             ? data.non_field_errors[0]
             : data.non_field_errors;
         } else if (data.message) {
-          errorMessage = data.message;
+          errorInfo.message = data.message;
+        } else if (data.error_code) {
+          errorInfo = {
+            type: getErrorType(data.error_code),
+            message: data.message || 'An error occurred.',
+          };
         }
       }
 
-      setError(errorMessage);
+      // Add network error handling
+      if (!error.response) {
+        errorInfo = {
+          type: 'network',
+          message: 'Unable to connect to the server. Please check your internet connection and try again.',
+        };
+      } else if (status >= 500) {
+        errorInfo = {
+          type: 'server',
+          message: 'The server encountered an error. Please try again in a few moments.',
+        };
+      }
+
+      setError(errorInfo);
     }
     setSubmitting(false);
   };
@@ -259,11 +418,7 @@ const SurveyTakePage = () => {
 
         {/* Survey Form */}
         <div className="card-organic">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600">
-              {error}
-            </div>
-          )}
+          {error && <ErrorAlert error={error} />}
 
           {survey.survey_type === 'ranked_choice' ? (
             <RankedChoiceForm

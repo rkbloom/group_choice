@@ -254,12 +254,16 @@ class SurveyResponseCreateSerializer(serializers.Serializer):
 
         # Check if survey is active and not expired
         if not survey.is_active:
-            raise serializers.ValidationError("This survey is no longer active.")
+            raise serializers.ValidationError({
+                'error_code': 'SURVEY_INACTIVE',
+                'message': "This survey is no longer accepting responses. The survey owner has closed it."
+            })
         if survey.is_expired:
             deadline_str = survey.deadline.strftime('%B %d, %Y at %I:%M %p') if survey.deadline else ''
-            raise serializers.ValidationError(
-                f"This survey has expired. The deadline was {deadline_str}."
-            )
+            raise serializers.ValidationError({
+                'error_code': 'SURVEY_EXPIRED',
+                'message': f"This survey has expired. The deadline was {deadline_str}. Please contact the survey owner if you need an extension."
+            })
 
         # Validate based on survey type
         if survey.survey_type == Survey.SurveyType.RANKED_CHOICE:
@@ -283,19 +287,22 @@ class SurveyResponseCreateSerializer(serializers.Serializer):
                 is_used=False
             ).first()
             if not invitation:
-                raise serializers.ValidationError(
-                    "Invalid or already used invitation token."
-                )
+                raise serializers.ValidationError({
+                    'error_code': 'INVALID_TOKEN',
+                    'message': "This survey link has already been used or is invalid. Each invitation link can only be used once."
+                })
             attrs['invitation'] = invitation
         elif user:
             if SurveyResponse.objects.filter(survey=survey, user=user).exists():
-                raise serializers.ValidationError(
-                    "You have already responded to this survey."
-                )
+                raise serializers.ValidationError({
+                    'error_code': 'ALREADY_RESPONDED',
+                    'message': "You have already submitted a response to this survey. Each person can only respond once."
+                })
         else:
-            raise serializers.ValidationError(
-                "Authentication or invitation token is required."
-            )
+            raise serializers.ValidationError({
+                'error_code': 'AUTH_REQUIRED',
+                'message': "Please sign in to take this survey, or use the unique link from your invitation email."
+            })
 
         return attrs
 
