@@ -1,6 +1,7 @@
 """
 Views for the surveys app.
 """
+import logging
 from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,6 +9,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+
+logger = logging.getLogger(__name__)
 
 from .models import (
     Survey, SurveyChoice, SurveyResponse,
@@ -130,7 +133,14 @@ class SurveyViewSet(viewsets.ModelViewSet):
             data=request.data,
             context={'request': request, 'survey': survey}
         )
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            logger.warning(
+                f"Survey response validation failed for survey {pk}: {serializer.errors}. "
+                f"Request data: {request.data}, User: {request.user}"
+            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         response = serializer.save()
 
         return Response(
