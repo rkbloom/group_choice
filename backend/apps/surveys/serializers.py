@@ -245,7 +245,7 @@ class SurveyResponseCreateSerializer(serializers.Serializer):
 
     ranked_answers = RankedChoiceAnswerSerializer(many=True, required=False)
     stones_answers = FiveStonesAnswerSerializer(many=True, required=False)
-    token = serializers.CharField(required=False, allow_blank=True)
+    token = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate(self, attrs):
         survey = self.context['survey']
