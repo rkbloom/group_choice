@@ -265,3 +265,159 @@ class SurveyAPITests(APITestCase):
         # Toggle again
         response = self.client.post(url)
         self.assertFalse(response.data['results_public'])
+
+    def test_submit_five_stones_response(self):
+        """Test submitting a 5 stones response."""
+        # Create 5 stones survey with 3 choices
+        survey = Survey.objects.create(
+            title='Stones Survey',
+            question='Allocate your stones',
+            survey_type=Survey.SurveyType.FIVE_STONES,
+            author=self.user
+        )
+        choice1 = SurveyChoice.objects.create(survey=survey, text='Option A', order=1)
+        choice2 = SurveyChoice.objects.create(survey=survey, text='Option B', order=2)
+        choice3 = SurveyChoice.objects.create(survey=survey, text='Option C', order=3)
+
+        # Submit response as another user
+        self.client.force_authenticate(user=self.other_user)
+        url = reverse('survey-respond', args=[survey.id])
+        data = {
+            'stones_answers': [
+                {'choice_id': str(choice1.id), 'stones': 3},
+                {'choice_id': str(choice2.id), 'stones': 1},
+                {'choice_id': str(choice3.id), 'stones': 1}
+            ]
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(survey.responses.count(), 1)
+
+    def test_submit_ranked_choice_with_null_token(self):
+        """Test submitting ranked choice with token=None (dashboard submission)."""
+        survey = Survey.objects.create(
+            title='Survey',
+            question='Question',
+            survey_type=Survey.SurveyType.RANKED_CHOICE,
+            author=self.user
+        )
+        choice1 = SurveyChoice.objects.create(survey=survey, text='Option A', order=1)
+        choice2 = SurveyChoice.objects.create(survey=survey, text='Option B', order=2)
+
+        self.client.force_authenticate(user=self.other_user)
+        url = reverse('survey-respond', args=[survey.id])
+        data = {
+            'token': None,  # Explicitly null token (like frontend sends)
+            'ranked_answers': [
+                {'choice_id': str(choice1.id), 'rank': 1},
+                {'choice_id': str(choice2.id), 'rank': 2}
+            ]
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_submit_five_stones_with_null_token(self):
+        """Test submitting 5 stones with token=None (dashboard submission)."""
+        survey = Survey.objects.create(
+            title='Stones Survey',
+            question='Allocate stones',
+            survey_type=Survey.SurveyType.FIVE_STONES,
+            author=self.user
+        )
+        choice1 = SurveyChoice.objects.create(survey=survey, text='Option A', order=1)
+        choice2 = SurveyChoice.objects.create(survey=survey, text='Option B', order=2)
+        choice3 = SurveyChoice.objects.create(survey=survey, text='Option C', order=3)
+
+        self.client.force_authenticate(user=self.other_user)
+        url = reverse('survey-respond', args=[survey.id])
+        data = {
+            'token': None,  # Explicitly null token (like frontend sends)
+            'stones_answers': [
+                {'choice_id': str(choice1.id), 'stones': 2},
+                {'choice_id': str(choice2.id), 'stones': 2},
+                {'choice_id': str(choice3.id), 'stones': 1}
+            ]
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+
+class AnonymousInvitationTests(APITestCase):
+    """Tests for anonymous invitation token submissions."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='author@example.com',
+            username='author',
+            password='testpass123',
+            first_name='Author',
+            last_name='User'
+        )
+        from .models import AnonymousInvitation
+
+        # Create survey
+        self.survey = Survey.objects.create(
+            title='Survey with Invitations',
+            question='Test question',
+            survey_type=Survey.SurveyType.RANKED_CHOICE,
+            author=self.user
+        )
+        self.choice1 = SurveyChoice.objects.create(
+            survey=self.survey, text='Option A', order=1
+        )
+        self.choice2 = SurveyChoice.objects.create(
+            survey=self.survey, text='Option B', order=2
+        )
+
+        # Create invitation
+        self.invitation = AnonymousInvitation.objects.create(
+            survey=self.survey,
+            email='invited@example.com'
+        )
+
+    def test_submit_with_valid_token(self):
+        """Test submitting a response with a valid invitation token."""
+        url = reverse('survey-respond', args=[self.survey.id])
+        data = {
+            'token': str(self.invitation.token),
+            'ranked_answers': [
+                {'choice_id': str(self.choice1.id), 'rank': 1},
+                {'choice_id': str(self.choice2.id), 'rank': 2}
+            ]
+        }
+        # No authentication - using token
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Verify invitation is marked as used
+        self.invitation.refresh_from_db()
+        self.assertTrue(self.invitation.is_used)
+
+    def test_submit_with_used_token_fails(self):
+        """Test that a used token cannot be reused."""
+        # Mark invitation as used
+        self.invitation.mark_used()
+
+        url = reverse('survey-respond', args=[self.survey.id])
+        data = {
+            'token': str(self.invitation.token),
+            'ranked_answers': [
+                {'choice_id': str(self.choice1.id), 'rank': 1},
+                {'choice_id': str(self.choice2.id), 'rank': 2}
+            ]
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_submit_with_invalid_token_fails(self):
+        """Test that an invalid token is rejected."""
+        url = reverse('survey-respond', args=[self.survey.id])
+        data = {
+            'token': 'invalid-token-12345',
+            'ranked_answers': [
+                {'choice_id': str(self.choice1.id), 'rank': 1},
+                {'choice_id': str(self.choice2.id), 'rank': 2}
+            ]
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

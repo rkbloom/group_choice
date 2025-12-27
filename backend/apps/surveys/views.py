@@ -40,6 +40,15 @@ class SurveyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
+        # For public actions (respond, retrieve, check_response_status), return all active surveys
+        # Permission checks are done in the action methods themselves
+        if self.action in ['respond', 'retrieve', 'check_response_status', 'public_results']:
+            return Survey.objects.filter(is_active=True)
+
+        # Anonymous users can't list/edit surveys
+        if not user.is_authenticated:
+            return Survey.objects.none()
+
         # Super users can see all surveys
         if user.is_super():
             return Survey.objects.all()
